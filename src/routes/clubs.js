@@ -13,3 +13,4 @@ router.post("/", (req, res) => {
 export default router;
 
 // Boilerplate code for clubs routes. To be implemented later.
+// Hi
