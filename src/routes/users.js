@@ -17,140 +17,181 @@
 
 import express from "express";
 import bcrypt from "bcrypt";
+import { verifyToken } from "../utils/jwt.js";
 import pool from "../config/db.js";
 
 const saltRounds = 10;
 const router = express.Router();
 
-// --- Create new user ---
-router.post("/new", async (req, res) => {
-  const { username, email, password } = req.body;
+// get majors
+router.get("/majors", async (req, res) => {
   try {
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-    const result = await pool.query(
-      `INSERT INTO users (username, email, password_hash)
-       VALUES ($1, $2, $3)
-       RETURNING id, username, email, created_at, bio, avatar_url`,
-      [username, email, hashedPassword]
-    );
-
-    res.status(201).json(result.rows[0]);
+    const result = await pool.query("SELECT id, major_name, faculty_id FROM majors ORDER BY id");
+    // console.log("Majors retrieved:", result.rows);
+    res.status(200).json(result.rows);
   } catch (err) {
-    if (err.code === "23505") {
-      return res.status(400).send("Username or email already exists");
-    }
     console.error(err);
-    res.status(500).send("Error creating user");
+    res.status(500).send("Error fetching majors");
+  }
+});
+// get faculties
+router.get("/faculties", async (req, res) => {
+  try {
+    const query = "SELECT id, faculty_name FROM faculties ORDER BY id"; 
+    const result = await pool.query(query);
+    // console.log("Faculties retrieved:", result.rows);
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching faculties");
+  }
+});
+// get tags
+router.get("/tags", async (req, res) => {
+  try {
+    const query = "SELECT id, tag_category, tag_name FROM tags ORDER BY id";
+    const result = await pool.query(query);
+    // console.log("Tags retrieved:", result.rows);
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching tags");
   }
 });
 
-// --- Login ---
-router.post("/login", async (req, res) => {
-  const { email, password } = req.body; // login with email (safer)
+// get study status enum
+router.get("/studyenum", async (req, res) => {
   try {
-    const result = await pool.query(
-      "SELECT id, username, email, password_hash FROM users WHERE email = $1",
-      [email]
-    );
+    const query = `SELECT enumlabel
+FROM pg_type t
+JOIN pg_enum e ON t.oid = e.enumtypid
+WHERE t.typname = 'user_study_status'
+ORDER BY e.enumsortorder;`;
+    const result = await pool.query(query);
+    // console.log("Study status' retrieved:", result.rows);
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching study status'");
+  }
+});
+// retrieve club status enum
+router.get("/clubenum", async (req, res) => {
+  try {
+    const query = `SELECT enumlabel
+FROM pg_type t
+JOIN pg_enum e ON t.oid = e.enumtypid
+WHERE t.typname = 'user_club_status'
+ORDER BY e.enumsortorder;`;
+    const result = await pool.query(query);
+    // console.log("Club status' retrieved:", result.rows);
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching club status'");
+  }
+});
 
+// get all users (for testing)
+router.get("/all", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM users ORDER BY id");
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching users");
+  }
+});
+
+// create new user
+// need to return user id for front-end to store in localStorage
+// handle unique email/username violation errors
+router.post("/new", async (req, res) => {
+  const { username, email, password } = req.body;
+  try {
+    // hash before storing
+    const password_hash = await bcrypt.hash(password, saltRounds);
+    
+    // insert into db
+    const query = 
+    `
+      INSERT INTO users (username, email, password_hash)
+      VALUES
+      ($1, $2, $3)
+      RETURNING id
+    `;
+    const result = await pool.query(query, [username, email, password_hash]);
+    res.status(201).send("User registered successfully, ID: " + result.rows[0].id);
+  } catch (err) {
+    console.error(err);
+    if (err.code === "23505") {
+      // unique violation
+      return res.status(409).send("Email or username already exists");
+    }
+    res.status(500).send("Error registering new user");
+  }
+});
+
+// login check
+router.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    // fetch user by email
+    const query = "SELECT id, username, email, password_hash FROM users WHERE email=$1";
+    const result = await pool.query(query, [email]);
+
+    // if no user found
     if (result.rows.length === 0) {
-      return res.status(401).send("Invalid email or password");
+      console.log(`Login failed: no user with email ${email}`);
+      return res.status(401).send("Invalid email");
     }
-
     const user = result.rows[0];
-    const isMatch = await bcrypt.compare(password, user.password_hash);
 
-    if (!isMatch) {
-      return res.status(401).send("Invalid email or password");
+    // compare password
+    const match = await bcrypt.compare(password, user.password_hash);
+    if (!match) {
+      console.log(`Login failed: incorrect password for user ${user.username} (ID: ${user.id})`);
+      return res.status(401).send("Invalid password");
     }
 
-    res.status(200).json({
-      message: "Login successful",
-      userId: user.id,
-      username: user.username,
-      email: user.email,
-    });
+    // successful login
+    console.log(`User ${user.username} (ID: ${user.id}) logged in successfully.`);
+    res.status(200).json({ id: user.id, username: user.username, email: user.email });
   } catch (err) {
     console.error(err);
     res.status(500).send("Error during login");
   }
 });
 
-// --- Get user by ID ---
-router.get("/id/:id", async (req, res) => {
-  const { id } = req.params;
+// delete user
+router.delete("/delete/:id", async (req, res) => {
+  const userId = req.params.id;
   try {
-    const result = await pool.query(
-      "SELECT id, username, email, bio, avatar_url, created_at FROM users WHERE id = $1",
-      [id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).send("User not found");
-    }
-
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Error fetching user");
-  }
-});
-
-// --- Update user profile (username, bio, email) ---
-router.patch("/update/:id", async (req, res) => {
-  const { id } = req.params;
-  const { username, bio, email } = req.body;
-
-  try {
-    const result = await pool.query(
-      `UPDATE users 
-       SET username = COALESCE($1, username),
-           bio = COALESCE($2, bio),
-           email = COALESCE($3, email),
-           updated_at = NOW()
-       WHERE id = $4
-       RETURNING id, username, email, bio, avatar_url, created_at`,
-      [username, bio, email, id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).send("User not found");
-    }
-
-    res.json(result.rows[0]);
-  } catch (err) {
-    if (err.code === "23505") {
-      return res.status(400).send("Username or email already exists");
-    }
-    console.error(err);
-    res.status(500).send("Error updating user");
-  }
-});
-
-// --- Delete user ---
-router.delete("/:id", async (req, res) => {
-  const { id } = req.params;
-  try {
-    const result = await pool.query(
-      "DELETE FROM users WHERE id = $1 RETURNING id, username",
-      [id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).send("User not found");
-    }
-
-    res.json({ message: "User deleted", ...result.rows[0] });
+    const query = "DELETE FROM users WHERE id=$1";
+    await pool.query(query, [userId]);
+    res.status(204).send();
   } catch (err) {
     console.error(err);
     res.status(500).send("Error deleting user");
   }
 });
 
-// TODO: (Later once we figure out JWT and sessions)
-// PATCH /users/update/password/:id → for password change.
-// POST /auth/refresh → for refresh tokens.
-// GET /users/me → return current user’s profile (using JWT instead of passing :id).
+router.get("/me", verifyToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT id, username, email FROM users WHERE id = $1",
+      [req.user.user_id]
+    );
+
+    if (result.rows.length === 0)
+      return res.status(404).json({ error: "User not found" });
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Get /me error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 
 export default router;
