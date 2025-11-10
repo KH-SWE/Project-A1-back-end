@@ -92,6 +92,29 @@ ORDER BY e.enumsortorder;`;
   }
 });
 
+// update user profile
+router.patch("/update/:id", verifyToken, async (req, res) => {
+  const userId = req.params.id;
+  const { bio, avatarUrl, twitterUrl, instagramUrl, discordUrl, linkedinUrl, major, faculty, studyYear, studyStatus, clubStatus } = req.body;
+  try {
+    const query = `
+      UPDATE users
+      SET bio=$1, avatar_url=$2, twitter_url=$3, instagram_url=$4, discord_url=$5, linkedin_url=$6,
+          major=$7, faculty=$8, study_year=$9, study_status=$10, club_status=$11
+      WHERE id=$12
+    `;
+    await pool.query(query, [
+      bio, avatarUrl, twitterUrl, instagramUrl, discordUrl, linkedinUrl,
+      major, faculty, studyYear, studyStatus, clubStatus,
+      userId
+    ]);
+    res.status(200).send("User profile updated successfully");
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error updating user profile");
+  }
+});
+
 // get all users (for testing)
 router.get("/all", async (req, res) => {
   try {

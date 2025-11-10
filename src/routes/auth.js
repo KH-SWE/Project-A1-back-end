@@ -9,27 +9,60 @@ import {
 
 const router = express.Router();
 
+// check username and email availabiity
+router.post("/check", async (req, res) => {
+  const { username, email } = req.body;
+
+  try {
+    if (username) {
+      const existingUsername = await pool.query(
+        "SELECT id FROM users WHERE username = $1",
+        [username]
+      );
+      if (existingUsername.rows.length > 0)
+        return res.status(200).json({ available: false, field: "username" });
+    }
+    if (email) {
+      const existingEmail = await pool.query(
+        "SELECT id FROM users WHERE email = $1",
+        [email]
+      );
+      if (existingEmail.rows.length > 0)
+        return res.status(200).json({ available: false, field: "email" });
+    }
+    res.status(200).json({ available: true });
+  } catch (err) {
+    console.error("Check availability error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 // USER REGISTRATION
 router.post("/register", async (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, email, password, bio, avatarUrl, twitterUrl, instagramUrl, discordUrl, linkedinUrl, major, faculty, studyYear, studyStatus, clubStatus } = req.body;
 
   try {
     // check if user exists
-    const existing = await pool.query(
+    const existingEmail = await pool.query(
       "SELECT id FROM users WHERE email = $1",
       [email]
     );
-    if (existing.rows.length > 0)
+    if (existingEmail.rows.length > 0)
       return res.status(400).json({ error: "Email already in use" });
-
+    const existingUsername = await pool.query(
+      "SELECT id FROM users WHERE username = $1",
+      [username]
+    );
+    if (existingUsername.rows.length > 0)
+      return res.status(400).json({ error: "Username already in use" });
     // hash password
     const saltRounds = 10;
     const password_hash = await bcrypt.hash(password, saltRounds);
 
     // insert new user
     const result = await pool.query(
-      "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id, username, email",
-      [username, email, password_hash]
+      "INSERT INTO users (username, email, password_hash, bio, avatar_url, twitter_url, instagram_url, discord_url, linkedin_url, major, faculty, study_year, study_status, club_status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id, username, email",
+      [username, email, password_hash, bio, avatarUrl, twitterUrl, instagramUrl, discordUrl, linkedinUrl, major, faculty, studyYear, studyStatus, clubStatus]
     );
     const user = result.rows[0];
 
