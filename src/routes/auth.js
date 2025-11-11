@@ -39,7 +39,7 @@ router.post("/check", async (req, res) => {
 
 // USER REGISTRATION
 router.post("/register", async (req, res) => {
-  const { username, email, password, bio, avatarUrl, twitterUrl, instagramUrl, discordUrl, linkedinUrl, major, faculty, studyYear, studyStatus, clubStatus } = req.body;
+  const { username, firstName, lastName, email, password, bio, avatarUrl, twitterUrl, instagramUrl, discordUrl, linkedinUrl, major, faculty, studyYear, studyStatus, clubStatus } = req.body;
 
   try {
     // check if user exists
@@ -61,8 +61,8 @@ router.post("/register", async (req, res) => {
 
     // insert new user
     const result = await pool.query(
-      "INSERT INTO users (username, email, password_hash, bio, avatar_url, twitter_url, instagram_url, discord_url, linkedin_url, major, faculty, study_year, study_status, club_status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id, username, email",
-      [username, email, password_hash, bio, avatarUrl, twitterUrl, instagramUrl, discordUrl, linkedinUrl, major, faculty, studyYear, studyStatus, clubStatus]
+      "INSERT INTO users (username, first_name, last_name, email, password_hash, bio, avatar_url, twitter_url, instagram_url, discord_url, linkedin_url, major, faculty, study_year, study_status, club_status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id, username, email",
+      [username, firstName, lastName, email, password_hash, bio, avatarUrl, twitterUrl, instagramUrl, discordUrl, linkedinUrl, major, faculty, studyYear, studyStatus, clubStatus]
     );
     const user = result.rows[0];
 

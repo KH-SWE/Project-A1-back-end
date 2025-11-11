@@ -93,22 +93,32 @@ ORDER BY e.enumsortorder;`;
 });
 
 // update user profile
+// need to check if username is unique before updating
 router.patch("/update/:id", verifyToken, async (req, res) => {
   const userId = req.params.id;
-  const { bio, avatarUrl, twitterUrl, instagramUrl, discordUrl, linkedinUrl, major, faculty, studyYear, studyStatus, clubStatus } = req.body;
+  const { username, firstName, lastName, bio, avatarUrl, twitterUrl, instagramUrl, discordUrl, linkedinUrl, major, faculty, studyYear, studyStatus, clubStatus } = req.body;
   try {
+    const existingUsername = await pool.query(
+      "SELECT id FROM users WHERE username = $1 AND id != $2",
+      [username, userId]
+    );
+    if (existingUsername.rows.length > 0) {
+      return res.status(400).json({ error: "Username already in use" });
+    }
     const query = `
       UPDATE users
-      SET bio=$1, avatar_url=$2, twitter_url=$3, instagram_url=$4, discord_url=$5, linkedin_url=$6,
-          major=$7, faculty=$8, study_year=$9, study_status=$10, club_status=$11
-      WHERE id=$12
+      SET username=$1, first_name=$2, last_name=$3, bio=$4, avatar_url=$5, twitter_url=$6, instagram_url=$7, discord_url=$8, linkedin_url=$9,
+          major=$10, faculty=$11, study_year=$12, study_status=$13, club_status=$14
+      WHERE id=$15
+      RETURNING id, username, first_name, last_name, bio, avatar_url, twitter_url, instagram_url, discord_url, linkedin_url,
+                major, faculty, study_year, study_status, club_status
     `;
-    await pool.query(query, [
-      bio, avatarUrl, twitterUrl, instagramUrl, discordUrl, linkedinUrl,
+    const result = await pool.query(query, [
+      username, firstName, lastName, bio, avatarUrl, twitterUrl, instagramUrl, discordUrl, linkedinUrl,
       major, faculty, studyYear, studyStatus, clubStatus,
       userId
     ]);
-    res.status(200).send("User profile updated successfully");
+    res.status(200).json(result.rows[0]);
   } catch (err) {
     console.error(err);
     res.status(500).send("Error updating user profile");
@@ -123,6 +133,22 @@ router.get("/all", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send("Error fetching users");
+  }
+});
+
+// get user by id
+router.get("/id/:id", async (req, res) => {
+  const userId = req.params.id;
+  try {
+    const query = "SELECT id, username, first_name, last_name, email, bio, avatar_url, twitter_url, instagram_url, discord_url, linkedin_url, major, faculty, study_year, study_status, club_status FROM users WHERE id=$1";
+    const result = await pool.query(query, [userId]);
+    if (result.rows.length === 0) {
+      return res.status(404).send("User not found");
+    }
+    res.status(200).json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching user");
   }
 });
 
