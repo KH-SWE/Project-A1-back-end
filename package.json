@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "docker-build:dev": "docker build -t project-a1-back-end-image-dev:0.0.1 -f Dockerfile.dev ."
   },
   "repository": {
     "type": "git",
