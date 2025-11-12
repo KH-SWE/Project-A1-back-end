@@ -3,16 +3,6 @@
  *
  * Handles user-related API routes.
  * Mounted at /users in app.js, so:
- *   POST   /users/new        -> Register new user
- *   POST   /users/login      -> Login
- *   GET    /users/id/:id     -> Get user by ID (public profile info only)
- *   PATCH  /users/update/:id -> Update profile fields (username, bio, email)
- *   DELETE /users/:id        -> Delete account
- *
- * Notes:
- * - Passwords are hashed with bcrypt before storing.
- * - Responses never include password_hash.
- * - Later: add JWT auth, email verification, password reset.
  */
 
 import express from "express";

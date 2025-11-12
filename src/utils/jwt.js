@@ -36,13 +36,24 @@ export function generateRefreshToken(user) {
  */
 export function verifyToken(req, res, next) {
   const authHeader = req.headers.authorization;
-  if (!authHeader)
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ error: "No token provided" });
+  }
 
   const token = authHeader.split(" ")[1];
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err)
-      return res.status(403).json({ error: "Invalid or expired token" });
+    if (err) {
+      // Distinguish expired token so client can trigger refresh flow
+      if (err.name === "TokenExpiredError") {
+        return res.status(401).json({
+          error: "token_expired",
+          message: "Access token has expired",
+          expiredAt: err.expiredAt || null,
+        });
+      }
+      // Invalid signature, malformed token, etc.
+      return res.status(401).json({ error: "invalid_token", message: "Invalid access token" });
+    }
 
     req.user = decoded; // attach payload to request
     next();
