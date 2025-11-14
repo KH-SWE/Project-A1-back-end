@@ -1,5 +1,5 @@
 import express from "express";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { verifyToken } from "../utils/jwt.js"; // use the verifyToken from your utils
 
@@ -35,6 +35,26 @@ router.post("/signed-url", verifyToken, async (req, res) => {
   } catch (err) {
     console.error("Error generating signed URL:", err);
     return res.status(500).json({ error: "Failed to generate signed URL" });
+  }
+});
+
+router.delete("/delete-file", verifyToken, async (req, res) => {
+  try {
+    const fileKey = req.query.fileKey;
+
+    if (!fileKey) {
+      return res.status(400).json({ error: "fileKey is required" });
+    }
+
+    await s3.send(new DeleteObjectCommand({
+      Bucket: process.env.AWS_S3_BUCKET_NAME,
+      Key: fileKey,
+    }));
+
+    return res.json({ message: "File deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting file:", err);
+    return res.status(500).json({ error: "Failed to delete file" });
   }
 });
 
