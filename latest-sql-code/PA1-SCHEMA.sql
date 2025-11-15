@@ -98,6 +98,12 @@ CREATE TABLE clubs (
 	is_verified BOOLEAN DEFAULT FALSE,-- is verified?
 	-- is private?
 	created_at TIMESTAMPTZ DEFAULT NOW()
+	website_url TEXT,
+	instagram_url TEXT,
+	discord_url TEXT,
+	tiktok_url TEXT,
+	linkedin_url TEXT,
+	twitter_url TEXT
 );
 
 -- maybe later if we want private clubs?
@@ -132,6 +138,7 @@ CREATE TABLE posts (
 	id SERIAL PRIMARY KEY,
 	user_id INT REFERENCES users(id) ON DELETE SET NULL,
 	club_id INT REFERENCES clubs(id) ON DELETE CASCADE,
+	is_from_club BOOLEAN NOT NULL DEFAULT FALSE;
 	title VARCHAR(150),
 	content TEXT,
 	like_count INT DEFAULT 0,
