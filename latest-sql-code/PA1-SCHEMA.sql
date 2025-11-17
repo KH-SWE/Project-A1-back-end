@@ -97,7 +97,7 @@ CREATE TABLE clubs (
 	banner_url TEXT,
 	is_verified BOOLEAN DEFAULT FALSE,-- is verified?
 	-- is private?
-	created_at TIMESTAMPTZ DEFAULT NOW()
+	created_at TIMESTAMPTZ DEFAULT NOW(),
 	website_url TEXT,
 	instagram_url TEXT,
 	discord_url TEXT,
@@ -138,7 +138,7 @@ CREATE TABLE posts (
 	id SERIAL PRIMARY KEY,
 	user_id INT REFERENCES users(id) ON DELETE SET NULL,
 	club_id INT REFERENCES clubs(id) ON DELETE CASCADE,
-	is_from_club BOOLEAN NOT NULL DEFAULT FALSE;
+	is_from_club BOOLEAN NOT NULL DEFAULT FALSE,
 	title VARCHAR(150),
 	content TEXT,
 	like_count INT DEFAULT 0,
@@ -209,5 +209,3 @@ ALTER SEQUENCE post_media_id_seq RESTART WITH 1;
 ALTER SEQUENCE post_likes_id_seq RESTART WITH 1;
 ALTER SEQUENCE comments_id_seq RESTART WITH 1;
 ALTER SEQUENCE comment_likes_id_seq RESTART WITH 1;
-
-
