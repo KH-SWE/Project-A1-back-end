@@ -211,5 +211,3 @@ ALTER SEQUENCE post_media_id_seq RESTART WITH 1;
 ALTER SEQUENCE post_likes_id_seq RESTART WITH 1;
 ALTER SEQUENCE comments_id_seq RESTART WITH 1;
 ALTER SEQUENCE comment_likes_id_seq RESTART WITH 1;
-
-
