@@ -27,6 +27,7 @@ CREATE TYPE user_study_status AS ENUM ('Open to Study Groups', 'Studying Solo');
 CREATE TYPE user_club_status AS ENUM ('Looking for Clubs', 'Not Joining Clubs');
 CREATE TYPE club_roles as ENUM('Member','Admin','Owner');
 CREATE TYPE media_type as ENUM('image', 'video');
+CREATE TYPE post_type as ENUM('Event', 'Announcement', 'Discussion');
 
 --- USERS ---
 -- FACULTIES TABLE
@@ -97,7 +98,7 @@ CREATE TABLE clubs (
 	banner_url TEXT,
 	is_verified BOOLEAN DEFAULT FALSE,-- is verified?
 	-- is private?
-	created_at TIMESTAMPTZ DEFAULT NOW()
+	created_at TIMESTAMPTZ DEFAULT NOW(),
 	website_url TEXT,
 	instagram_url TEXT,
 	discord_url TEXT,
@@ -138,7 +139,8 @@ CREATE TABLE posts (
 	id SERIAL PRIMARY KEY,
 	user_id INT REFERENCES users(id) ON DELETE SET NULL,
 	club_id INT REFERENCES clubs(id) ON DELETE CASCADE,
-	is_from_club BOOLEAN NOT NULL DEFAULT FALSE;
+	is_from_club BOOLEAN NOT NULL DEFAULT FALSE,
+	post_type post_type DEFAULT 'Discussion',
 	title VARCHAR(150),
 	content TEXT,
 	like_count INT DEFAULT 0,

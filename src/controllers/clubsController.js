@@ -50,30 +50,43 @@ export const getClubById = async (req, res) => {
 
     const query = `
       SELECT
-        c.*,
-        COALESCE(
-          JSON_AGG(DISTINCT t.tag_name)
-          FILTER (WHERE t.tag_name IS NOT NULL), 
-          '[]'
-        ) AS tags,
-        COUNT(DISTINCT cm.user_id) AS member_count,
-        COALESCE(
-          JSON_AGG(
-            DISTINCT CASE 
-              WHEN cm.role IN ('Admin','Owner') THEN 
-                json_build_object('user_id', cm.user_id, 'role', cm.role)
-            END
-          ) FILTER (WHERE cm.role IN ('Admin','Owner')),
-          '[]'
-        ) AS admins,
-        COALESCE(my.role, NULL) AS my_role
-      FROM clubs c
-      LEFT JOIN club_tags ct ON ct.club_id = c.id
-      LEFT JOIN tags t ON t.id = ct.tag_id
-      LEFT JOIN club_members cm ON cm.club_id = c.id
-      LEFT JOIN club_members my ON my.club_id = c.id AND my.user_id = $1
-      WHERE c.id = $2
-      GROUP BY c.id, my.role;
+  c.*,
+  (
+    SELECT COALESCE(json_agg(sub.tag_name), '[]'::json)
+    FROM (
+      SELECT DISTINCT t.tag_name
+      FROM tags t
+      JOIN club_tags ct2 ON ct2.tag_id = t.id
+      WHERE ct2.club_id = c.id
+    ) sub
+  ) AS tags,
+  (
+    SELECT COUNT(DISTINCT cm2.user_id)
+    FROM club_members cm2
+    WHERE cm2.club_id = c.id
+  ) AS member_count,
+  (
+    SELECT COALESCE(
+      json_agg(
+        json_build_object('user_id', sub.user_id, 'role', sub.role)
+      ),
+      '[]'::json
+    )
+    FROM (
+      SELECT DISTINCT cm3.user_id, cm3.role
+      FROM club_members cm3
+      WHERE cm3.club_id = c.id
+        AND cm3.role IN ('Admin', 'Owner')
+    ) sub
+  ) AS admins,
+  my.role AS my_role
+
+FROM clubs c
+LEFT JOIN club_members my 
+  ON my.club_id = c.id 
+ AND my.user_id = $1
+WHERE c.id = $2
+GROUP BY c.id, my.role;
     `;
 
     const { rows } = await pool.query(query, [userId, clubId]);
@@ -94,14 +107,14 @@ export const getClubById = async (req, res) => {
 // ---------------------------------------------
 export const createClub = async (req, res) => {
   try {
-    const { name, description, avatarUrl, bannerUrl, tagIds } = req.body;
+    const { name, description, avatarUrl, bannerUrl, websiteUrl, instagramUrl, discordUrl, tiktokUrl, linkedinUrl, twitterUrl, tagIds } = req.body;
     const userId = req.user.user_id || req.user.id;
 
     const result = await pool.query(
-      `INSERT INTO clubs (name, description, avatar_url, banner_url)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO clubs (name, description, avatar_url, banner_url, website_url, instagram_url, discord_url, tiktok_url, linkedin_url, twitter_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
-      [name, description, avatarUrl, bannerUrl]
+      [name, description, avatarUrl, bannerUrl, websiteUrl, instagramUrl, discordUrl, tiktokUrl, linkedinUrl, twitterUrl]
     );
 
     const club = result.rows[0];
