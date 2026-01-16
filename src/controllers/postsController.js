@@ -8,22 +8,23 @@ export const createPost = async (req, res) => {
 
   try {
     const userId = req.user.user_id || req.user.id;
-    const { clubId, title, content, tagIds = [], media = [] } = req.body;
+    // Current Post type is only for a user not in a club and schema needs the false tag for it to be stored correctly
+    const { clubId, title, content, postType = 'Discussion', isFromClub = false, tagIds = [], media = [] } = req.body;
 
     await client.query("BEGIN");
 
-    // Insert post
+    // Insert post with post_type and is_from_club
     const postInsert = await client.query(
-      `INSERT INTO posts (user_id, club_id, title, content)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO posts (user_id, club_id, title, content, post_type, is_from_club)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [userId, clubId, title, content]
+      [userId, clubId, title, content, postType, isFromClub]
     );
 
     const post = postInsert.rows[0];
 
     // Insert tags
-    if (tag_ids.length > 0) {
+    if (Array.isArray(tagIds) && tagIds.length > 0) {
       await client.query(
         `INSERT INTO post_tags (post_id, tag_id)
          SELECT $1, unnest($2::int[])`,
@@ -32,12 +33,14 @@ export const createPost = async (req, res) => {
     }
 
     // Insert media
-    for (const m of media) {
-      await client.query(
-        `INSERT INTO post_media (post_id, media_url, media_type, sort_order)
-         VALUES ($1, $2, $3, $4)`,
-        [post.id, m.url, m.type, m.sort_order || 0]
-      );
+    if (Array.isArray(media)) {
+      for (const m of media) {
+        await client.query(
+          `INSERT INTO post_media (post_id, media_url, media_type, sort_order)
+           VALUES ($1, $2, $3, $4)`,
+          [post.id, m.url, m.type, m.sort_order || 0]
+        );
+      }
     }
 
     await client.query("COMMIT");
@@ -45,8 +48,9 @@ export const createPost = async (req, res) => {
 
   } catch (err) {
     await client.query("ROLLBACK");
-    console.error("POST /posts error:", err);
-    return res.status(500).json({ error: "Failed to create post" });
+    console.error("POST /posts error:", err.message);
+    console.error("Error details:", err);
+    return res.status(500).json({ error: err.message || "Failed to create post" });
   } finally {
     client.release();
   }
