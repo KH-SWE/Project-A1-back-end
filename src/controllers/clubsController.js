@@ -21,16 +21,17 @@ export const getAllClubs = async (req, res) => {
           FILTER (WHERE t.tag_name IS NOT NULL),
           '[]'
         ) AS tags,
-        CASE WHEN my.user_id IS NULL THEN false ELSE true END AS is_member
+        CASE WHEN my.user_id IS NULL THEN false ELSE true END AS is_member,
+        my.role AS my_role
       FROM clubs c
       LEFT JOIN club_members cm ON cm.club_id = c.id
       LEFT JOIN club_members my ON my.club_id = c.id AND my.user_id = $1
       LEFT JOIN club_tags ct ON ct.club_id = c.id
       LEFT JOIN tags t ON t.id = ct.tag_id
-      GROUP BY c.id, my.user_id
+      GROUP BY c.id, my.user_id, my.role
       ORDER BY c.name ASC;
     `;
-
+    // GROUP BY includes my.role for SQL aggregation (user club admin status needed)
     const { rows } = await pool.query(query, [userId]);
     return res.json(rows);
 
